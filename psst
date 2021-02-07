@@ -16,6 +16,14 @@ for p in listdir('/proc'):
 				n += int(line[1])
 	lines.append((n, '% 6d %s' % (p, name)))
 
+with open('/proc/mounts') as f:
+	for line in f:
+		_, dst, type, _, _, _ = line.split()
+		if type in ('tmpfs', 'devtmpfs'):
+			s = statvfs(dst)
+			n = (s.f_blocks - s.f_bfree) * s.f_bsize / 1024
+			lines.append((n, dst))
+
 lines.sort()
 for n, name in lines:
 	print('%8.1f %s' % (n/1024, name))
