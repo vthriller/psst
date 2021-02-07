@@ -7,17 +7,14 @@ for p in listdir('/proc'):
 	try: p = int(p)
 	except: continue
 
-	with open('/proc/%d/status' % p) as f:
-		n = 0
-		name = None
+	name = open('/proc/%d/comm' % p).read().rstrip('\n')
+	n = 0
+	with open('/proc/%d/smaps' % p) as f:
 		for line in f:
-			if line.startswith('Name:\t'):
-				name = line[6:].rstrip('\n')
-				continue
 			line = line.split()
-			if line[0] in ('VmRSS:', 'VmSwap:'):
+			if line[0] in ('Pss:', 'SwapPss:'):
 				n += int(line[1])
-		lines.append((n, '% 6d %s' % (p, name)))
+	lines.append((n, '% 6d %s' % (p, name)))
 
 lines.sort()
 for n, name in lines:
