@@ -1,0 +1,24 @@
+#!/usr/bin/env python
+from os import listdir, statvfs
+
+lines = []
+
+for p in listdir('/proc'):
+	try: p = int(p)
+	except: continue
+
+	with open('/proc/%d/status' % p) as f:
+		n = 0
+		name = None
+		for line in f:
+			if line.startswith('Name:\t'):
+				name = line[6:].rstrip('\n')
+				continue
+			line = line.split()
+			if line[0] in ('VmRSS:', 'VmSwap:'):
+				n += int(line[1])
+		lines.append((n, '% 6d %s' % (p, name)))
+
+lines.sort()
+for n, name in lines:
+	print('%8.1f %s' % (n/1024, name))
