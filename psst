@@ -7,13 +7,16 @@ for p in listdir('/proc'):
 	try: p = int(p)
 	except: continue
 
-	name = open('/proc/%d/comm' % p).read().rstrip('\n')
-	n = 0
-	with open('/proc/%d/smaps' % p) as f:
-		for line in f:
-			line = line.split()
-			if line[0] in ('Pss:', 'SwapPss:'):
-				n += int(line[1])
+	try:
+		name = open('/proc/%d/comm' % p).read().rstrip('\n')
+		n = 0
+		with open('/proc/%d/smaps' % p) as f:
+			for line in f:
+				line = line.split()
+				if line[0] in ('Pss:', 'SwapPss:'):
+					n += int(line[1])
+	except FileNotFoundError:
+		continue
 	lines.append((n, '% 6d %s' % (p, name)))
 
 with open('/proc/mounts') as f:
