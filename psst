@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 from os import listdir, statvfs
-from collections import namedtuple
-
-Entry = namedtuple('Entry', 'size pid ppid name children'.split())
+from types import SimpleNamespace
 
 entries = {}
 
@@ -30,7 +28,13 @@ for p in listdir('/proc'):
 					n += int(line[1])
 	except FileNotFoundError:
 		continue
-	entries[p] = Entry(n, p, ppid, name, [])
+	entries[p] = SimpleNamespace(
+		size = n,
+		pid = p,
+		ppid = ppid,
+		name = name,
+		children = [],
+	)
 
 with open('/proc/mounts') as f:
 	for line in f:
@@ -38,7 +42,13 @@ with open('/proc/mounts') as f:
 		if type in ('tmpfs', 'devtmpfs'):
 			s = statvfs(dst)
 			n = (s.f_blocks - s.f_bfree) * s.f_bsize / 1024
-			entries[dst] = Entry(n, 'tmpfs', 1, dst, [])
+			entries[dst] = SimpleNamespace(
+				size = n,
+				pid = 'tmpfs',
+				ppid = 1,
+				name = dst,
+				children = [],
+			)
 
 # build the tree
 for e in entries.values():
