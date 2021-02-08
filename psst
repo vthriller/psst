@@ -2,7 +2,7 @@
 from os import listdir, statvfs
 from collections import namedtuple
 
-Entry = namedtuple('Entry', 'size pid ppid name'.split())
+Entry = namedtuple('Entry', 'size pid ppid name children'.split())
 
 entries = {}
 
@@ -30,7 +30,7 @@ for p in listdir('/proc'):
 					n += int(line[1])
 	except FileNotFoundError:
 		continue
-	entries[p] = Entry(n, p, ppid, name)
+	entries[p] = Entry(n, p, ppid, name, [])
 
 with open('/proc/mounts') as f:
 	for line in f:
@@ -38,9 +38,22 @@ with open('/proc/mounts') as f:
 		if type in ('tmpfs', 'devtmpfs'):
 			s = statvfs(dst)
 			n = (s.f_blocks - s.f_bfree) * s.f_bsize / 1024
-			entries[dst] = Entry(n, None, 1, dst)
+			entries[dst] = Entry(n, None, 1, dst, [])
 
-entries = list(entries.values())
-entries.sort(key=lambda e: e.size)
-for e in entries:
-	print('%8.1f %s%s' % (e.size/1024, '% 6d ' % e.pid if e.pid else '       ', e.name))
+# build the tree
+for e in entries.values():
+	if e.pid == 1: continue
+	entries[e.ppid].children.append(e)
+
+def show_subtree(entry, prefix_first='', prefix_rest=''):
+	print('%8.1f %s ' % (
+		entry.size/1024,
+		'% 6d' % entry.pid if entry.pid else '      ',
+	), end='')
+	print(prefix_first + entry.name)
+	for child in entry.children[:-1]:
+		show_subtree(child, prefix_rest + '├ ', prefix_rest + '│ ')
+	if entry.children:
+		show_subtree(entry.children[-1], prefix_rest + '└ ', prefix_rest + '  ')
+
+show_subtree(entries[1])
