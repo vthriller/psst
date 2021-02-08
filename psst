@@ -84,4 +84,12 @@ def show_subtree(entry, prefix_first='', prefix_rest=''):
 	if entry.children:
 		show_subtree(entry.children[-1], prefix_rest + '└ ', prefix_rest + '  ')
 
+print('\033[1m', end='')
+print('% 8s % 8s % 6s %s' % (
+	'PSS',
+	'∑ PSS',
+	'PID',
+	'command or mount point'
+))
+print('\033[0m', end='')
 show_subtree(entries[1])
