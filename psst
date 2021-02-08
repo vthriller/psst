@@ -11,13 +11,13 @@ for p in listdir('/proc'):
 	except: continue
 
 	try:
-		name = None
+		name = open('/proc/%d/cmdline' % p).read().replace('\0', ' ')
+		if not name:
+			# skip kernel thread
+			continue
 		ppid = None
 		with open('/proc/%d/status' % p) as f:
 			for line in f:
-				if line.startswith('Name:\t'):
-					name = line[6:].rstrip('\n')
-					continue
 				if line.startswith('PPid:\t'):
 					ppid = int(line[6:].rstrip('\n'))
 					continue
