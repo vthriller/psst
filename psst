@@ -38,7 +38,7 @@ with open('/proc/mounts') as f:
 		if type in ('tmpfs', 'devtmpfs'):
 			s = statvfs(dst)
 			n = (s.f_blocks - s.f_bfree) * s.f_bsize / 1024
-			entries[dst] = Entry(n, None, 1, dst, [])
+			entries[dst] = Entry(n, 'tmpfs', 1, dst, [])
 
 # build the tree
 for e in entries.values():
@@ -48,7 +48,7 @@ for e in entries.values():
 def show_subtree(entry, prefix_first='', prefix_rest=''):
 	print('%8.1f %s ' % (
 		entry.size/1024,
-		'% 6d' % entry.pid if entry.pid else '      ',
+		'% 6s' % entry.pid,
 	), end='')
 	print(prefix_first + entry.name)
 	for child in entry.children[:-1]:
