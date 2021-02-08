@@ -25,7 +25,8 @@ for p in listdir('/proc'):
 			for line in f:
 				line = line.split()
 				if line[0] in ('Pss:', 'SwapPss:'):
-					n += int(line[1])
+					if line[2] == 'kB':
+						n += int(line[1]) * 1024
 	except FileNotFoundError:
 		continue
 	entries[p] = SimpleNamespace(
@@ -41,7 +42,7 @@ with open('/proc/mounts') as f:
 		_, dst, type, _, _, _ = line.split()
 		if type in ('tmpfs', 'devtmpfs'):
 			s = statvfs(dst)
-			n = (s.f_blocks - s.f_bfree) * s.f_bsize / 1024
+			n = (s.f_blocks - s.f_bfree) * s.f_bsize
 			entries[dst] = SimpleNamespace(
 				size = n,
 				pid = 'tmpfs',
