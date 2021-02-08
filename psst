@@ -21,12 +21,15 @@ for p in listdir('/proc'):
 					continue
 
 		n = 0
-		with open('/proc/%d/smaps' % p) as f:
-			for line in f:
-				line = line.split()
-				if line[0] in ('Pss:', 'SwapPss:'):
-					if line[2] == 'kB':
-						n += int(line[1]) * 1024
+		try:
+			with open('/proc/%d/smaps' % p) as f:
+				for line in f:
+					line = line.split()
+					if line[0] in ('Pss:', 'SwapPss:'):
+						if line[2] == 'kB':
+							n += int(line[1]) * 1024
+		except PermissionError:
+			pass
 	except FileNotFoundError:
 		continue
 	entries[p] = SimpleNamespace(
