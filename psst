@@ -4,7 +4,7 @@ from collections import namedtuple
 
 Entry = namedtuple('Entry', 'size pid name'.split())
 
-lines = []
+entries = {}
 
 for p in listdir('/proc'):
 	try: p = int(p)
@@ -20,7 +20,7 @@ for p in listdir('/proc'):
 					n += int(line[1])
 	except FileNotFoundError:
 		continue
-	lines.append(Entry(n, p, name))
+	entries[p] = Entry(n, p, name)
 
 with open('/proc/mounts') as f:
 	for line in f:
@@ -28,8 +28,9 @@ with open('/proc/mounts') as f:
 		if type in ('tmpfs', 'devtmpfs'):
 			s = statvfs(dst)
 			n = (s.f_blocks - s.f_bfree) * s.f_bsize / 1024
-			lines.append(Entry(n, None, dst))
+			entries[dst] = Entry(n, None, dst)
 
-lines.sort(key=lambda e: e.size)
-for e in lines:
+entries = list(entries.values())
+entries.sort(key=lambda e: e.size)
+for e in entries:
 	print('%8.1f %s%s' % (e.size/1024, '% 6d ' % e.pid if e.pid else '       ', e.name))
