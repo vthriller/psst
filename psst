@@ -21,6 +21,7 @@ for p in listdir('/proc'):
 					continue
 
 		n = 0
+		accurate = True
 		try:
 			with open('/proc/%d/smaps' % p) as f:
 				for line in f:
@@ -28,12 +29,15 @@ for p in listdir('/proc'):
 					if line[0] in ('Pss:', 'SwapPss:'):
 						if line[2] == 'kB':
 							n += int(line[1]) * 1024
+						else:
+							accurate = False
 		except PermissionError:
-			pass
+			accurate = False
 	except FileNotFoundError:
 		continue
 	entries[p] = SimpleNamespace(
 		size = n,
+		accurate = accurate,
 		pid = p,
 		ppid = ppid,
 		name = name,
@@ -48,6 +52,7 @@ with open('/proc/mounts') as f:
 			n = (s.f_blocks - s.f_bfree) * s.f_bsize
 			entries[dst] = SimpleNamespace(
 				size = n,
+				accurate = True,
 				pid = 'tmpfs',
 				ppid = 1,
 				name = dst,
@@ -63,6 +68,7 @@ def update_size_total(entry):
 	for child in entry.children:
 		update_size_total(child)
 	entry.size_total = entry.size + sum(child.size_total for child in entry.children)
+	entry.accurate_total = entry.accurate and all([child.accurate_total for child in entry.children])
 
 update_size_total(entries[1])
 
@@ -77,8 +83,10 @@ def pretty_num(n):
 		n /= 1024
 
 def show_subtree(entry, prefix_first='', prefix_rest=''):
-	print('%s %s %s ' % (
+	print('%s%s\033[0m %s%s\033[0m %s ' % (
+		'\033[33m' if not entry.accurate else '',
 		pretty_num(entry.size),
+		'\033[33m' if not entry.accurate_total else '',
 		pretty_num(entry.size_total),
 		'% 6s' % entry.pid,
 	), end='')
