@@ -62,10 +62,20 @@ def update_size_total(entry):
 
 update_size_total(entries[1])
 
+# sort by size
+for e in entries.values():
+	e.children.sort(key = lambda e: e.size_total, reverse = True)
+
+def pretty_num(n):
+	for prefix in ' kMGTPE':
+		if n < 1024:
+			return '% 7.1f%s' % (n, prefix)
+		n /= 1024
+
 def show_subtree(entry, prefix_first='', prefix_rest=''):
-	print('%8.1f %8.1f %s ' % (
-		entry.size/1024,
-		entry.size_total/1024,
+	print('%s %s %s ' % (
+		pretty_num(entry.size),
+		pretty_num(entry.size_total),
 		'% 6s' % entry.pid,
 	), end='')
 	print(prefix_first + entry.name)
