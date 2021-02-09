@@ -23,7 +23,7 @@ for p in listdir('/proc'):
 					ppid = int(line[6:].rstrip('\n'))
 					continue
 
-		n = 0
+		size = 0
 		accurate = True
 		try:
 			with open('/proc/%d/smaps' % p) as f:
@@ -31,7 +31,7 @@ for p in listdir('/proc'):
 					line = line.split()
 					if line[0] in ('Pss:', 'SwapPss:'):
 						if line[2] == 'kB':
-							n += int(line[1]) * 1024
+							size += int(line[1]) * 1024
 						else:
 							accurate = False
 		except PermissionError:
@@ -39,7 +39,7 @@ for p in listdir('/proc'):
 	except FileNotFoundError:
 		continue
 	entries[p] = SimpleNamespace(
-		size = n,
+		size = size,
 		accurate = accurate,
 		pid = p,
 		ppid = ppid,
@@ -52,9 +52,9 @@ with open('/proc/mounts') as f:
 		_, mountpoint, type, _, _, _ = line.split()
 		if type in ('tmpfs', 'devtmpfs'):
 			s = statvfs(mountpoint)
-			n = (s.f_blocks - s.f_bfree) * s.f_bsize
+			size = (s.f_blocks - s.f_bfree) * s.f_bsize
 			entries[mountpoint] = SimpleNamespace(
-				size = n,
+				size = size,
 				accurate = True,
 				pid = 'tmpfs',
 				ppid = 1,
