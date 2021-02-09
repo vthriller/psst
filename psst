@@ -12,7 +12,9 @@ for p in listdir('/proc'):
 	except: continue
 
 	try:
-		name = open('/proc/%d/cmdline' % p).read().replace('\0', ' ')
+		name = open('/proc/%d/cmdline' % p).read()
+		for c in '\0\r\n\033':
+			name = name.replace(c, ' ')
 		if not name:
 			# skip kernel thread
 			continue
