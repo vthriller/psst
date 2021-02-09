@@ -49,16 +49,16 @@ for p in listdir('/proc'):
 
 with open('/proc/mounts') as f:
 	for line in f:
-		_, dst, type, _, _, _ = line.split()
+		_, mountpoint, type, _, _, _ = line.split()
 		if type in ('tmpfs', 'devtmpfs'):
-			s = statvfs(dst)
+			s = statvfs(mountpoint)
 			n = (s.f_blocks - s.f_bfree) * s.f_bsize
-			entries[dst] = SimpleNamespace(
+			entries[mountpoint] = SimpleNamespace(
 				size = n,
 				accurate = True,
 				pid = 'tmpfs',
 				ppid = 1,
-				name = dst,
+				name = mountpoint,
 				children = [],
 			)
 
