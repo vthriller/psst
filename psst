@@ -7,6 +7,21 @@ import sys
 
 entries = {}
 
+with open('/proc/mounts') as f:
+	for line in f:
+		_, mountpoint, type, _, _, _ = line.split()
+		if type in ('tmpfs', 'devtmpfs'):
+			s = statvfs(mountpoint)
+			size = (s.f_blocks - s.f_bfree) * s.f_bsize
+			entries[mountpoint] = SimpleNamespace(
+				size = size,
+				accurate = True,
+				pid = 'tmpfs',
+				ppid = 1,
+				name = mountpoint,
+				children = [],
+			)
+
 for p in listdir('/proc'):
 	try: p = int(p)
 	except: continue
@@ -48,21 +63,6 @@ for p in listdir('/proc'):
 		name = name,
 		children = [],
 	)
-
-with open('/proc/mounts') as f:
-	for line in f:
-		_, mountpoint, type, _, _, _ = line.split()
-		if type in ('tmpfs', 'devtmpfs'):
-			s = statvfs(mountpoint)
-			size = (s.f_blocks - s.f_bfree) * s.f_bsize
-			entries[mountpoint] = SimpleNamespace(
-				size = size,
-				accurate = True,
-				pid = 'tmpfs',
-				ppid = 1,
-				name = mountpoint,
-				children = [],
-			)
 
 # build the tree
 for e in entries.values():
