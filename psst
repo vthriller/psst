@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 from os import listdir, statvfs
+from os.path import normpath
 from types import SimpleNamespace
 from subprocess import Popen, PIPE
 from io import TextIOWrapper
@@ -7,10 +8,20 @@ import sys
 
 entries = {}
 
+mounts_all = set()
+mounts_mem = set()
 with open('/proc/mounts') as f:
 	for line in f:
 		_, mountpoint, type, _, _, _ = line.split()
+
+		# FIXME? does anyone mmap() bind-mounted regular files?
+		mountpoint = normpath(mountpoint) + '/'
+
+		mounts_all.add(mountpoint)
+
 		if type in ('tmpfs', 'devtmpfs'):
+			mounts_mem.add(mountpoint)
+
 			s = statvfs(mountpoint)
 			size = (s.f_blocks - s.f_bfree) * s.f_bsize
 			entries[mountpoint] = SimpleNamespace(
@@ -21,6 +32,8 @@ with open('/proc/mounts') as f:
 				name = mountpoint,
 				children = [],
 			)
+
+mounts_all = sorted(mounts_all, key=len, reverse=True)
 
 for p in listdir('/proc'):
 	try: p = int(p)
@@ -44,13 +57,35 @@ for p in listdir('/proc'):
 
 		size = 0
 		accurate = True
+		mountpoint = None # temporary, per-region
 		try:
 			with open('/proc/%d/smaps' % p) as f:
 				for line in f:
-					line = line.split()
+					line = line.split(None, 5)
+					if ':' not in line[0]:
+						'''
+						assume region map header, like this one:
+						7fbebe4b5000-7fbebe53c000 rw-s 00000000 00:2d 10701860    /dev/shm/... (deleted)
+
+						line[5] should be the path since we limited split() to 5 splits
+						'''
+						if len(line) < 6:
+							# path can be absent
+							mountpoint = None
+						else:
+							path = line[5]
+							for try_mountpoint in mounts_all:
+								# XXX this does not work well with files opened before tmpfs was mounted on top of them,
+								# and there's nothing we can do about it
+								if path.startswith(try_mountpoint):
+									mountpoint = try_mountpoint
+									break
 					if line[0] in ('Pss:', 'SwapPss:'):
 						if line[2] == 'kB':
-							size += int(line[1]) * 1024
+							amount = int(line[1]) * 1024
+							size += amount
+							if mountpoint in mounts_mem:
+								entries[mountpoint].size -= amount
 						else:
 							accurate = False
 		except PermissionError:
