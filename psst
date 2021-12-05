@@ -15,7 +15,9 @@ with open('/proc/mounts') as f:
 		_, mountpoint, type, _, _, _ = line.split()
 
 		# FIXME? does anyone mmap() bind-mounted regular files?
-		mountpoint = normpath(mountpoint) + '/'
+		mountpoint = normpath(mountpoint)
+		if mountpoint != '/':
+			mountpoint += '/'
 
 		mounts_all.add(mountpoint)
 
@@ -69,9 +71,10 @@ for p in listdir('/proc'):
 
 						line[5] should be the path since we limited split() to 5 splits
 						'''
+						mountpoint = None
 						if len(line) < 6:
 							# path can be absent
-							mountpoint = None
+							pass
 						else:
 							path = line[5]
 							for try_mountpoint in mounts_all:
