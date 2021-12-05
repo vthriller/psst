@@ -121,6 +121,8 @@ update_size_total(entries[1])
 for e in entries.values():
 	e.children.sort(key = lambda e: e.size_total, reverse = True)
 
+pid_len = max(len(str(e.pid)) for e in entries.values())
+
 def pretty_num(n):
 	for prefix in ' kMGTPE':
 		if abs(n) < 1024:
@@ -133,7 +135,7 @@ def show_subtree(entry, prefix_first='', prefix_rest=''):
 		pretty_num(entry.size),
 		'\033[33m' if not entry.accurate_total else '',
 		pretty_num(entry.size_total),
-		'% 6s' % entry.pid,
+		'% *s' % (pid_len, entry.pid),
 	), end='')
 	print(prefix_first + entry.name)
 	for child in entry.children[:-1]:
@@ -145,9 +147,10 @@ pager = Popen(('less', '-RS'), stdin=PIPE)
 sys.stdout = TextIOWrapper(pager.stdin)
 
 print('\033[1m', end='')
-print('% 8s % 8s % 6s %s' % (
+print('% 8s % 8s % *s %s' % (
 	'PSS',
 	'∑ PSS',
+	pid_len,
 	'PID',
 	'command or mount point'
 ))
