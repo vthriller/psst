@@ -148,7 +148,7 @@ for e in entries.values():
 
 def pretty_num(n):
 	for prefix in ' kMGTPE':
-		if n < 1024:
+		if abs(n) < 1024:
 			return '% 7.1f%s' % (n, prefix)
 		n /= 1024
 
