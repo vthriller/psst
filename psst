@@ -104,6 +104,28 @@ for p in listdir('/proc'):
 		children = [],
 	)
 
+unknown = 0
+with open('/proc/meminfo') as f:
+	for line in f:
+		line = line.split()
+		if len(line) < 3 or line[2] != 'kB':
+			continue
+		if line[0] in ('MemTotal:', 'SwapTotal:'):
+			unknown += int(line[1]) * 1024
+		if line[0] in ('MemAvailable:', 'SwapFree:'):
+			unknown -= int(line[1]) * 1024
+for e in entries.values():
+	unknown -= e.size
+
+entries['unknown'] = SimpleNamespace(
+	size = unknown,
+	accurate = True,
+	pid = '?',
+	ppid = 1,
+	name = '(unknown)',
+	children = [],
+)
+
 # build the tree
 for e in entries.values():
 	if e.pid == 1: continue
