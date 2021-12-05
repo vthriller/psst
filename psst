@@ -104,6 +104,30 @@ for p in listdir('/proc'):
 		children = [],
 	)
 
+for b in listdir('/sys/class/block'):
+	if b.startswith('zram'):
+		stat = open(f'/sys/class/block/{b}/mm_stat').read().split()
+
+		data = int(stat[1])
+		overhead = int(stat[2]) - data
+
+		entries[b] = SimpleNamespace(
+			size = overhead,
+			accurate = True,
+			pid = 'zram',
+			ppid = 1,
+			name = b,
+			children = [],
+		)
+		entries[b + '-data'] = SimpleNamespace(
+			size = data,
+			accurate = True,
+			pid = 'zram',
+			ppid = b,
+			name = f'{b} (compressed data)',
+			children = [],
+		)
+
 unknown = 0
 with open('/proc/meminfo') as f:
 	for line in f:

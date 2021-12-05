@@ -1,4 +1,4 @@
-**PSSt** (short for *[PSS](https://en.wikipedia.org/wiki/Proportional_set_size) tree*) is a simple utility that shows memory usage for every process as well as their children, taking shared memory into account. `tmpfs` file systems are also reported.
+**PSSt** (short for *[PSS](https://en.wikipedia.org/wiki/Proportional_set_size) tree*) is a simple utility that shows memory usage for every process as well as their children, taking shared memory into account. `tmpfs` file systems and `zram` devices are also reported.
 
 Sample output:
 
