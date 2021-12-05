@@ -9,7 +9,7 @@ import sys
 entries = {}
 
 mounts_all = set()
-mounts_mem = set()
+mounts_mem = dict() # holds sum of PSS for every mmaped region of tmpfs-backed files
 with open('/proc/mounts') as f:
 	for line in f:
 		_, mountpoint, type, _, _, _ = line.split()
@@ -22,7 +22,7 @@ with open('/proc/mounts') as f:
 		mounts_all.add(mountpoint)
 
 		if type in ('tmpfs', 'devtmpfs'):
-			mounts_mem.add(mountpoint)
+			mounts_mem[mountpoint] = 0
 
 			s = statvfs(mountpoint)
 			size = (s.f_blocks - s.f_bfree) * s.f_bsize
@@ -88,7 +88,7 @@ for p in listdir('/proc'):
 							amount = int(line[1]) * 1024
 							size += amount
 							if mountpoint in mounts_mem:
-								entries[mountpoint].size -= amount
+								mounts_mem[mountpoint] += amount
 						else:
 							accurate = False
 		except PermissionError:
@@ -103,6 +103,9 @@ for p in listdir('/proc'):
 		name = name,
 		children = [],
 	)
+
+for mountpoint, amount in mounts_mem.items():
+	entries[mountpoint].size -= amount
 
 # build the tree
 for e in entries.values():
