@@ -25,16 +25,17 @@ with open('/proc/mounts') as f:
 		if type in ('tmpfs', 'devtmpfs'):
 			mounts_mem[mountpoint] = 0
 
-			s = statvfs(mountpoint)
-			size = (s.f_blocks - s.f_bfree) * s.f_bsize
-			entries[mountpoint] = SimpleNamespace(
-				size = size,
-				accurate = True,
-				pid = 'tmpfs',
-				ppid = 1,
-				name = mountpoint,
-				children = [],
-			)
+			if True:
+				s = statvfs(mountpoint)
+				size = (s.f_blocks - s.f_bfree) * s.f_bsize
+				entries[dev] = SimpleNamespace(
+					size = size,
+					accurate = True,
+					pid = 'tmpfs',
+					ppid = 1,
+					name = mountpoint,
+					children = [],
+				)
 
 mounts_all = sorted(mounts_all, key=len, reverse=True)
 
