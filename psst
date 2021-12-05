@@ -9,9 +9,6 @@ import sys
 
 entries = {}
 
-mounts_all = set()
-mounts_keys = dict() # maps path ('/dev/shm') to the `entries` key ('mount-00:2d')
-mounts_mem = dict() # holds sum of PSS for every mmaped region of tmpfs-backed files
 with open('/proc/mounts') as f:
 	for line in f:
 		_, mountpoint, type, _, _, _ = line.split()
@@ -21,17 +18,12 @@ with open('/proc/mounts') as f:
 		if mountpoint != '/':
 			mountpoint += '/'
 
-		mounts_all.add(mountpoint)
-
 		if type in ('tmpfs', 'devtmpfs'):
-			mounts_mem[mountpoint] = 0
-
 			dev = stat(mountpoint).st_dev
 			dev = 'mount-{:02x}:{:02x}'.format(
 				major(dev),
 				minor(dev),
 			)
-			mounts_keys[mountpoint] = dev
 
 			if dev in entries:
 				entries[dev].name += '; '
@@ -47,8 +39,6 @@ with open('/proc/mounts') as f:
 					name = mountpoint,
 					children = [],
 				)
-
-mounts_all = sorted(mounts_all, key=len, reverse=True)
 
 for p in listdir('/proc'):
 	try: p = int(p)
@@ -82,26 +72,19 @@ for p in listdir('/proc'):
 						assume region map header, like this one:
 						7fbebe4b5000-7fbebe53c000 rw-s 00000000 00:2d 10701860    /dev/shm/... (deleted)
 
-						line[5] should be the path since we limited split() to 5 splits
+						line[5] (which can be absent) should be the path since we limited split() to 5 splits
 						'''
 						mountpoint = None
-						if len(line) < 6:
-							# path can be absent
-							pass
-						else:
-							path = line[5]
-							for try_mountpoint in mounts_all:
-								# XXX this does not work well with files opened before tmpfs was mounted on top of them,
-								# and there's nothing we can do about it
-								if path.startswith(try_mountpoint):
-									mountpoint = try_mountpoint
-									break
+						if 'mount-'+line[3] in entries:
+							# region is backed by file in tmpfs
+							# adjust mount's memory usage so we don't count the same file regions twice
+							mountpoint = 'mount-'+line[3]
 					if line[0] in ('Pss:', 'SwapPss:'):
 						if line[2] == 'kB':
 							amount = int(line[1]) * 1024
 							size += amount
-							if mountpoint in mounts_mem:
-								mounts_mem[mountpoint] += amount
+							if mountpoint:
+								entries[mountpoint].size -= amount
 						else:
 							accurate = False
 		except PermissionError:
@@ -116,9 +99,6 @@ for p in listdir('/proc'):
 		name = name,
 		children = [],
 	)
-
-for mountpoint, amount in mounts_mem.items():
-	entries[mounts_keys[mountpoint]].size -= amount
 
 # build the tree
 for e in entries.values():
