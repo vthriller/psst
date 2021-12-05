@@ -34,7 +34,7 @@ with open('/proc/mounts') as f:
 				entries[dev] = SimpleNamespace(
 					size = size,
 					accurate = True,
-					pid = 'tmpfs',
+					pid = type,
 					ppid = 1,
 					name = mountpoint,
 					children = [],
@@ -83,7 +83,11 @@ for p in listdir('/proc'):
 						if line[2] == 'kB':
 							amount = int(line[1]) * 1024
 							size += amount
-							if mountpoint:
+							# skip devtmpfs: it usually doesn't have enough free space to host large files,
+							# but it does host a bunch of device files (from /dev/zero and /dev/null
+							# to /dev/snd/pcm* and even /dev/sd*) which, if mmap()-ed, would render this mountpoint
+							# like it uses negative amounts or memory
+							if mountpoint and entries[mountpoint].pid != 'devtmpfs':
 								entries[mountpoint].size -= amount
 						else:
 							accurate = False
