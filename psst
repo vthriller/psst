@@ -126,6 +126,9 @@ for cache in listdir('/sys/kernel/slab'):
 		# size of each slab
 		slab_size = PAGE_SIZE << int(open(f'/sys/kernel/slab/{cache}/order').read())
 
+		if not slabs:
+			continue
+
 		# how many objects there is in all slabs
 		objects = int(open(f'/sys/kernel/slab/{cache}/objects').read().split()[0])
 		# size of each object
