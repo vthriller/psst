@@ -115,6 +115,11 @@ for cache in listdir('/sys/kernel/slab'):
 		parent = readlink(f'/sys/kernel/slab/{cache}')
 		slab_aliases[parent].append(cache)
 	except OSError: # not a symlink
+		if int(open(f'/sys/kernel/slab/{cache}/reclaim_account').read()):
+			# reclaimable slabs should be already covered by MemAvailable/SReclaimable
+			# (although kernel currently guesstimates that some slabs will hang around because of objects in use)
+			continue
+
 		# how many slabs there is in a cache
 		# split(): we're not interested in NUMA-aware statistics
 		slabs = int(open(f'/sys/kernel/slab/{cache}/slabs').read().split()[0])
@@ -167,6 +172,8 @@ for cache in listdir('/sys/kernel/slab'):
 
 for cache, aliases in slab_aliases.items():
 	cache = f'slab-{cache}'
+	if cache not in entries:
+		continue
 	entries[cache].name += ': '
 	entries[cache].name += ', '.join(sorted(aliases))
 
