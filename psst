@@ -1,11 +1,14 @@
 #!/usr/bin/env python
-from os import listdir, stat, statvfs, major, minor
+from os import listdir, stat, statvfs, major, minor, readlink
 from os.path import normpath
 from types import SimpleNamespace
 from subprocess import Popen, PIPE
 from io import TextIOWrapper
 from collections import defaultdict
+from resource import getpagesize
 import sys
+
+PAGE_SIZE = getpagesize()
 
 entries = {}
 
@@ -103,6 +106,69 @@ for p in listdir('/proc'):
 		name = name,
 		children = [],
 	)
+
+# https://utcc.utoronto.ca/~cks/space/blog/linux/SlabinfoSlabMerging
+slab_aliases = defaultdict(list)
+
+for cache in listdir('/sys/kernel/slab'):
+	try:
+		parent = readlink(f'/sys/kernel/slab/{cache}')
+		slab_aliases[parent].append(cache)
+	except OSError: # not a symlink
+		# how many slabs there is in a cache
+		# split(): we're not interested in NUMA-aware statistics
+		slabs = int(open(f'/sys/kernel/slab/{cache}/slabs').read().split()[0])
+		# size of each slab
+		slab_size = PAGE_SIZE << int(open(f'/sys/kernel/slab/{cache}/order').read())
+
+		# how many objects there is in all slabs
+		objects = int(open(f'/sys/kernel/slab/{cache}/objects').read().split()[0])
+		# size of each object
+		obj_size = int(open(f'/sys/kernel/slab/{cache}/object_size').read())
+		# object size, but now with metadata and alignment
+		obj_size_meta = int(open(f'/sys/kernel/slab/{cache}/slab_size').read())
+
+		size = slabs * slab_size
+		used = objects * obj_size
+		overhead = objects * (obj_size_meta - obj_size)
+
+		entries[f'slab-{cache}'] = SimpleNamespace(
+			size = 0,
+			accurate = True,
+			pid = 'slab',
+			ppid = 1,
+			name = cache,
+			children = [],
+		)
+		entries[f'slab-{cache}-meta'] = SimpleNamespace(
+			size = overhead,
+			accurate = True,
+			pid = 'slab',
+			ppid = f'slab-{cache}',
+			name = '(slab objects)',
+			children = [],
+		)
+		entries[f'slab-{cache}-objects'] = SimpleNamespace(
+			size = used,
+			accurate = True,
+			pid = 'slab',
+			ppid = f'slab-{cache}-meta',
+			name = '(kernel objects)',
+			children = [],
+		)
+		entries[f'slab-{cache}-free'] = SimpleNamespace(
+			size = size - used,
+			accurate = True,
+			pid = 'slab',
+			ppid = f'slab-{cache}',
+			name = '(unused space)',
+			children = [],
+		)
+
+for cache, aliases in slab_aliases.items():
+	cache = f'slab-{cache}'
+	entries[cache].name += ': '
+	entries[cache].name += ', '.join(sorted(aliases))
 
 for b in listdir('/sys/class/block'):
 	if b.startswith('zram'):
