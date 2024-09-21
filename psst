@@ -50,7 +50,7 @@ for p in listdir('/proc'):
 	except: continue
 
 	try:
-		print(f'reading {p}...', end='\r')
+		print(f'reading {p}...', end='\r', file=sys.stderr)
 
 		name = open('/proc/%d/cmdline' % p).read()
 		for c in '\0\r\n\033':
