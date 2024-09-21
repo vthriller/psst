@@ -227,7 +227,8 @@ with open('/sys/kernel/debug/dri/0/amdgpu_gem_info') as f:
 			pid = int(line[1])
 		else:
 		        # 0x00000001:     19922944 byte  GTT exported as 000000007fd7a7f1 NO_CPU_ACCESS CPU_GTT_USWC
-			vram[pid][line[3]] += int(line[1])
+			if line[3] != 'VRAM': # TODO? maybe show but don't count towards parent memory usage
+				vram[pid][line[3]] += int(line[1])
 
 for pid in vram:
 	entries[f'{pid}-amdgpu'] = SimpleNamespace(
