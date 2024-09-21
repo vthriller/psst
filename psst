@@ -218,6 +218,7 @@ for b in listdir('/sys/class/block'):
 		)
 
 for dri in listdir('/sys/kernel/debug/dri/'):
+	try:
 		with open(f'/sys/kernel/debug/dri/{dri}/amdgpu_gem_info') as f:
 			vram = defaultdict(lambda: defaultdict(lambda: defaultdict(int))) # vram[pid][dri][type]
 			pid = 1
@@ -230,6 +231,8 @@ for dri in listdir('/sys/kernel/debug/dri/'):
 					# 0x00000001:     19922944 byte  GTT exported as 000000007fd7a7f1 NO_CPU_ACCESS CPU_GTT_USWC
 					if line[3] != 'VRAM': # TODO? maybe show but don't count towards parent memory usage
 						vram[pid][dri][line[3]] += int(line[1])
+	except FileNotFoundError:
+		continue
 
 for pid in vram:
 	for dri in vram[pid]:
