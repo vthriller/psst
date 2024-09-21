@@ -204,6 +204,37 @@ for b in listdir('/sys/class/block'):
 			children = [],
 		)
 
+with open('/sys/kernel/debug/dri/0/amdgpu_gem_info') as f:
+	vram = defaultdict(lambda: defaultdict(int))
+	pid = 1
+	for line in f:
+		line = line.split()
+		if line[0] == 'pid':
+			# pid   246108 command X:
+			pid = int(line[1])
+		else:
+		        # 0x00000001:     19922944 byte  GTT exported as 000000007fd7a7f1 NO_CPU_ACCESS CPU_GTT_USWC
+			vram[pid][line[3]] += int(line[1])
+
+for pid in vram:
+	entries[f'{pid}-amdgpu'] = SimpleNamespace(
+		size = 0,
+		accurate = True,
+		pid = f'amdgpu',
+		ppid = pid,
+		name = '(amdgpu)',
+		children = [],
+	)
+	for type, size in vram[pid].items():
+		entries[f'{pid}-amdgpu-{type}'] = SimpleNamespace(
+			size = size,
+			accurate = True,
+			pid = f'amdgpu',
+			ppid = f'{pid}-amdgpu',
+			name = f'({type})',
+			children = [],
+		)
+
 unknown = 0
 with open('/proc/meminfo') as f:
 	for line in f:
