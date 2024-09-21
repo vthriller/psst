@@ -7,8 +7,12 @@ from io import TextIOWrapper
 from collections import defaultdict
 from resource import getpagesize
 import sys
+from optparse import OptionParser
 
-quick = '-q' in sys.argv
+parser = OptionParser()
+parser.add_option('-q', '--quiet', action='store_true', dest='quick', default=False, help='use less accurate but faster measurements')
+(options, args) = parser.parse_args()
+quick = options.quick
 
 PAGE_SIZE = getpagesize()
 
