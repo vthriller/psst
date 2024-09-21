@@ -39,7 +39,7 @@ with open('/proc/mounts') as f:
 				entries[dev] = SimpleNamespace(
 					size = size,
 					accurate = not quick, # otherwise mmaped files are counted twice: once in smaps_rollup, once in statvfs
-					pid = type,
+					display_pid = type,
 					ppid = 1,
 					name = mountpoint,
 					children = [],
@@ -103,7 +103,7 @@ for p in listdir('/proc'):
 								# but it does host a bunch of device files (from /dev/zero and /dev/null
 								# to /dev/snd/pcm* and even /dev/sd*) which, if mmap()-ed, would render this mountpoint
 								# like it uses negative amounts or memory
-								if mountpoint and entries[mountpoint].pid != 'devtmpfs':
+								if mountpoint and entries[mountpoint].display_pid != 'devtmpfs':
 									entries[mountpoint].size -= amount
 							else:
 								accurate = False
@@ -114,7 +114,7 @@ for p in listdir('/proc'):
 	entries[p] = SimpleNamespace(
 		size = size,
 		accurate = accurate,
-		pid = p,
+		display_pid = p,
 		ppid = ppid,
 		name = name,
 		children = [],
@@ -156,7 +156,7 @@ for cache in listdir('/sys/kernel/slab'):
 		entries[f'slab-{cache}'] = SimpleNamespace(
 			size = 0,
 			accurate = True,
-			pid = 'slab',
+			display_pid = 'slab',
 			ppid = 1,
 			name = cache,
 			children = [],
@@ -164,7 +164,7 @@ for cache in listdir('/sys/kernel/slab'):
 		entries[f'slab-{cache}-meta'] = SimpleNamespace(
 			size = overhead,
 			accurate = True,
-			pid = 'slab',
+			display_pid = 'slab',
 			ppid = f'slab-{cache}',
 			name = '(slab objects)',
 			children = [],
@@ -172,7 +172,7 @@ for cache in listdir('/sys/kernel/slab'):
 		entries[f'slab-{cache}-objects'] = SimpleNamespace(
 			size = used,
 			accurate = True,
-			pid = 'slab',
+			display_pid = 'slab',
 			ppid = f'slab-{cache}-meta',
 			name = '(kernel objects)',
 			children = [],
@@ -180,7 +180,7 @@ for cache in listdir('/sys/kernel/slab'):
 		entries[f'slab-{cache}-free'] = SimpleNamespace(
 			size = size - used,
 			accurate = True,
-			pid = 'slab',
+			display_pid = 'slab',
 			ppid = f'slab-{cache}',
 			name = '(unused space)',
 			children = [],
@@ -203,7 +203,7 @@ for b in listdir('/sys/class/block'):
 		entries[b] = SimpleNamespace(
 			size = overhead,
 			accurate = True,
-			pid = 'zram',
+			display_pid = 'zram',
 			ppid = 1,
 			name = b,
 			children = [],
@@ -211,7 +211,7 @@ for b in listdir('/sys/class/block'):
 		entries[b + '-data'] = SimpleNamespace(
 			size = data,
 			accurate = True,
-			pid = 'zram',
+			display_pid = 'zram',
 			ppid = b,
 			name = f'{b} (compressed data)',
 			children = [],
@@ -233,7 +233,7 @@ for pid in vram:
 	entries[f'{pid}-amdgpu'] = SimpleNamespace(
 		size = 0,
 		accurate = True,
-		pid = f'amdgpu',
+		display_pid = f'amdgpu',
 		ppid = pid,
 		name = '(amdgpu)',
 		children = [],
@@ -242,7 +242,7 @@ for pid in vram:
 		entries[f'{pid}-amdgpu-{type}'] = SimpleNamespace(
 			size = size,
 			accurate = True,
-			pid = f'amdgpu',
+			display_pid = f'amdgpu',
 			ppid = f'{pid}-amdgpu',
 			name = f'({type})',
 			children = [],
@@ -264,7 +264,7 @@ for e in entries.values():
 entries['unknown'] = SimpleNamespace(
 	size = unknown,
 	accurate = True,
-	pid = '?',
+	display_pid = '?',
 	ppid = 1,
 	name = '(unknown)',
 	children = [],
@@ -272,7 +272,7 @@ entries['unknown'] = SimpleNamespace(
 
 # build the tree
 for e in entries.values():
-	if e.pid == 1: continue
+	if e.display_pid == 1: continue
 	entries[e.ppid].children.append(e)
 
 def update_size_total(entry):
@@ -287,7 +287,7 @@ update_size_total(entries[1])
 for e in entries.values():
 	e.children.sort(key = lambda e: e.size_total, reverse = True)
 
-pid_len = max(len(str(e.pid)) for e in entries.values())
+pid_len = max(len(str(e.display_pid)) for e in entries.values())
 
 def pretty_num(n):
 	for prefix in ' kMGTPE':
@@ -301,7 +301,7 @@ def show_subtree(entry, prefix_first='', prefix_rest=''):
 		pretty_num(entry.size),
 		'\033[33m' if not entry.accurate_total else '',
 		pretty_num(entry.size_total),
-		'% *s' % (pid_len, entry.pid),
+		'% *s' % (pid_len, entry.display_pid),
 	), end='')
 	print(prefix_first + entry.name)
 	for child in entry.children[:-1]:
