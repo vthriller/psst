@@ -8,6 +8,8 @@ from collections import defaultdict
 from resource import getpagesize
 import sys
 
+quick = '-q' in sys.argv
+
 PAGE_SIZE = getpagesize()
 
 entries = {}
@@ -36,7 +38,7 @@ with open('/proc/mounts') as f:
 				size = (s.f_blocks - s.f_bfree) * s.f_bsize
 				entries[dev] = SimpleNamespace(
 					size = size,
-					accurate = True,
+					accurate = not quick, # otherwise mmaped files are counted twice: once in smaps_rollup, once in statvfs
 					pid = type,
 					ppid = 1,
 					name = mountpoint,
@@ -67,6 +69,17 @@ for p in listdir('/proc'):
 		accurate = True
 		mountpoint = None # temporary, per-region
 		try:
+			if quick:
+				with open('/proc/%d/smaps_rollup' % p) as f:
+					for line in f:
+						line = line.split(None, 5)
+						if line[0] in ('Pss:', 'SwapPss:'):
+							if line[2] == 'kB':
+								amount = int(line[1]) * 1024
+								size += amount
+							else:
+								accurate = False
+			else:
 				with open('/proc/%d/smaps' % p) as f:
 					for line in f:
 						line = line.split(None, 5)

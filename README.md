@@ -15,3 +15,5 @@ Sample output:
     1.0G     1.0G  tmpfs ├ /dev/shm
     ...      ...    ...  ├ ...
 ```
+
+Use `-q` to use less accurate estimates (useful for systems with large number of processes).
