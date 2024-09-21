@@ -67,33 +67,33 @@ for p in listdir('/proc'):
 		accurate = True
 		mountpoint = None # temporary, per-region
 		try:
-			with open('/proc/%d/smaps' % p) as f:
-				for line in f:
-					line = line.split(None, 5)
-					if ':' not in line[0]:
-						'''
-						assume region map header, like this one:
-						7fbebe4b5000-7fbebe53c000 rw-s 00000000 00:2d 10701860    /dev/shm/... (deleted)
+				with open('/proc/%d/smaps' % p) as f:
+					for line in f:
+						line = line.split(None, 5)
+						if ':' not in line[0]:
+							'''
+							assume region map header, like this one:
+							7fbebe4b5000-7fbebe53c000 rw-s 00000000 00:2d 10701860    /dev/shm/... (deleted)
 
-						line[5] (which can be absent) should be the path since we limited split() to 5 splits
-						'''
-						mountpoint = None
-						if 'mount-'+line[3] in entries:
-							# region is backed by file in tmpfs
-							# adjust mount's memory usage so we don't count the same file regions twice
-							mountpoint = 'mount-'+line[3]
-					if line[0] in ('Pss:', 'SwapPss:'):
-						if line[2] == 'kB':
-							amount = int(line[1]) * 1024
-							size += amount
-							# skip devtmpfs: it usually doesn't have enough free space to host large files,
-							# but it does host a bunch of device files (from /dev/zero and /dev/null
-							# to /dev/snd/pcm* and even /dev/sd*) which, if mmap()-ed, would render this mountpoint
-							# like it uses negative amounts or memory
-							if mountpoint and entries[mountpoint].pid != 'devtmpfs':
-								entries[mountpoint].size -= amount
-						else:
-							accurate = False
+							line[5] (which can be absent) should be the path since we limited split() to 5 splits
+							'''
+							mountpoint = None
+							if 'mount-'+line[3] in entries:
+								# region is backed by file in tmpfs
+								# adjust mount's memory usage so we don't count the same file regions twice
+								mountpoint = 'mount-'+line[3]
+						if line[0] in ('Pss:', 'SwapPss:'):
+							if line[2] == 'kB':
+								amount = int(line[1]) * 1024
+								size += amount
+								# skip devtmpfs: it usually doesn't have enough free space to host large files,
+								# but it does host a bunch of device files (from /dev/zero and /dev/null
+								# to /dev/snd/pcm* and even /dev/sd*) which, if mmap()-ed, would render this mountpoint
+								# like it uses negative amounts or memory
+								if mountpoint and entries[mountpoint].pid != 'devtmpfs':
+									entries[mountpoint].size -= amount
+							else:
+								accurate = False
 		except PermissionError:
 			accurate = False
 	except FileNotFoundError:
