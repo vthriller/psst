@@ -63,11 +63,12 @@ for p in listdir('/proc'):
 			# skip kernel thread
 			continue
 		ppid = None
-		with open('/proc/%d/status' % p) as f:
-			for line in f:
-				if line.startswith('PPid:\t'):
-					ppid = int(line[6:].rstrip('\n'))
-					continue
+		if True:
+			with open('/proc/%d/status' % p) as f:
+				for line in f:
+					if line.startswith('PPid:\t'):
+						ppid = int(line[6:].rstrip('\n'))
+						continue
 
 		size = 0
 		accurate = True
