@@ -295,12 +295,23 @@ def pretty_num(n):
 			return '% 7.1f%s' % (n, prefix)
 		n /= 1024
 
+if sys.stdout.isatty():
+	yellow = '\033[33m'
+	bold = '\033[1m'
+	clear = '\033[0m'
+else:
+	yellow = ''
+	bold = ''
+	clear = ''
+
 def show_subtree(entry, prefix_first='', prefix_rest=''):
-	print('%s%s\033[0m %s%s\033[0m %s ' % (
-		'\033[33m' if not entry.accurate else '',
+	print('%s%s%s %s%s%s %s ' % (
+		yellow if not entry.accurate else '',
 		pretty_num(entry.size),
-		'\033[33m' if not entry.accurate_total else '',
+		clear,
+		yellow if not entry.accurate_total else '',
 		pretty_num(entry.size_total),
+		clear,
 		'% *s' % (pid_len, entry.display_pid),
 	), end='')
 	print(prefix_first + entry.name)
@@ -312,7 +323,7 @@ def show_subtree(entry, prefix_first='', prefix_rest=''):
 pager = Popen(('less', '-RS'), stdin=PIPE)
 sys.stdout = TextIOWrapper(pager.stdin)
 
-print('\033[1m', end='')
+print(bold, end='')
 print('% 8s % 8s % *s %s' % (
 	'PSS',
 	'∑ PSS',
@@ -320,7 +331,7 @@ print('% 8s % 8s % *s %s' % (
 	'PID',
 	'command or mount point'
 ))
-print('\033[0m', end='')
+print(clear, end='')
 show_subtree(entries[1])
 
 sys.stdout.close()
