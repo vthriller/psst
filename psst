@@ -377,6 +377,12 @@ def update_size_total(entry):
 
 update_size_total(entries[1])
 
+# do not show empty cgroups (i.e. those that have no processes in the entire cgroup subtree)
+for i in list(entries):
+	if entries[i].display_pid == 'cg' and not entries[i].count_total:
+		entries[entries[i].parent].children.remove(entries[i])
+		del entries[i]
+
 # sort by size
 for e in entries.values():
 	e.children.sort(key = lambda e: e.size_total, reverse = True)
