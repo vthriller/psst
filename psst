@@ -300,10 +300,10 @@ for b in listdir('/sys/class/block'):
 			children = [],
 		)
 
+vram = defaultdict(lambda: defaultdict(lambda: defaultdict(int))) # vram[pid][dri][type]
 for dri in listdir('/sys/kernel/debug/dri/'):
 	try:
 		with open(f'/sys/kernel/debug/dri/{dri}/amdgpu_gem_info') as f:
-			vram = defaultdict(lambda: defaultdict(lambda: defaultdict(int))) # vram[pid][dri][type]
 			pid = 1
 			for line in f:
 				line = line.split()
