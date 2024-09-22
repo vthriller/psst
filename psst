@@ -71,21 +71,19 @@ if options.group_by == 'cgroup':
 		if cg == '/sys/fs/cgroup/memory':
 			cg = '/'
 
-		pids = open(f'{d}/cgroup.procs').read().split()
-		for pid in pids:
+		for pid in open(f'{d}/cgroup.procs').read().split():
 			proc_cgroups[int(pid)] = cg
 
-		if pids:
-			entries[f'cgroup-{cg}'] = SimpleNamespace(
-				size = 0,
-				count = 0,
-				accurate = True,
-				display_pid = 'cg',
-				parent = 1 if cg == '/' else 'cgroup-' + (dirname(cg) or '/'),
-				#name = cg if cg == '/' else basename(cg),
-				name = cg,
-				children = [],
-			)
+		entries[f'cgroup-{cg}'] = SimpleNamespace(
+			size = 0,
+			count = 0,
+			accurate = True,
+			display_pid = 'cg',
+			parent = 1 if cg == '/' else 'cgroup-' + (dirname(cg) or '/'),
+			#name = cg if cg == '/' else basename(cg),
+			name = cg,
+			children = [],
+		)
 
 exes = set()
 
