@@ -11,12 +11,12 @@ from optparse import OptionParser
 
 parser = OptionParser()
 parser.add_option('-q', '--quiet', action='store_true', dest='quick', default=False, help='use less accurate but faster measurements')
-parser.add_option('-c', '--cgroup', action='store_true', dest='by_cgroup', default=False, help='group processes by memory cgroup membership rather than their parent processes')
+parser.add_option('--group-by', dest='group_by', default='parent', choices='parent cgroup'.split(), help='choose how to group processes: parent (default), cgroup')
 parser.add_option('--group-slab', action='store_true', dest='group_slab', default=False, help='group all SLABs into single subtree')
 parser.add_option('--group-tmpfs', action='store_true', dest='group_tmpfs', default=False, help='group all tmpfs mounts into single subtree')
 (options, args) = parser.parse_args()
 quick = options.quick
-by_cgroup = options.by_cgroup
+by_cgroup = options.group_by == 'cgroup'
 
 PAGE_SIZE = getpagesize()
 
