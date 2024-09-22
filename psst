@@ -317,6 +317,13 @@ for dri in listdir('/sys/kernel/debug/dri/'):
 	except FileNotFoundError:
 		continue
 
+# via `AMDGPU_GEM_DOMAIN_*` in include/uapi/drm/amdgpu_drm.h
+vram_names = dict(
+	CPU = 'system memory, GPU unmapped',
+	GTT = 'system memory, GPU mapped',
+	VRAM = 'GPU own VRAM',
+)
+
 for pid in vram:
 	for dri in vram[pid]:
 		entries[f'{pid}-amdgpu-{dri}'] = SimpleNamespace(
@@ -335,7 +342,7 @@ for pid in vram:
 				accurate = True,
 				display_pid = f'amdgpu',
 				parent = f'{pid}-amdgpu-{dri}',
-				name = f'({type})',
+				name = f'({vram_names.get(type, type)})',
 				children = [],
 			)
 
