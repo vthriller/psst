@@ -13,6 +13,7 @@ parser = OptionParser()
 parser.add_option('-q', '--quiet', action='store_true', dest='quick', default=False, help='use less accurate but faster measurements')
 parser.add_option('-c', '--cgroup', action='store_true', dest='by_cgroup', default=False, help='group processes by memory cgroup membership rather than their parent processes')
 parser.add_option('--group-slab', action='store_true', dest='group_slab', default=False, help='group all SLABs into single subtree')
+parser.add_option('--group-tmpfs', action='store_true', dest='group_tmpfs', default=False, help='group all tmpfs mounts into single subtree')
 (options, args) = parser.parse_args()
 quick = options.quick
 by_cgroup = options.by_cgroup
@@ -20,6 +21,16 @@ by_cgroup = options.by_cgroup
 PAGE_SIZE = getpagesize()
 
 entries = {}
+
+if options.group_tmpfs:
+	entries['mounts'] = SimpleNamespace(
+		size = 0,
+		accurate = True,
+		display_pid = 'tmpfs',
+		ppid = 1,
+		name = 'tmpfs',
+		children = [],
+	)
 
 with open('/proc/mounts') as f:
 	for line in f:
@@ -47,7 +58,7 @@ with open('/proc/mounts') as f:
 					size = size,
 					accurate = not quick, # otherwise mmaped files are counted twice: once in smaps_rollup, once in statvfs
 					display_pid = type,
-					ppid = 1,
+					ppid = 'mounts' if options.group_tmpfs else 1,
 					name = mountpoint,
 					children = [],
 				)
