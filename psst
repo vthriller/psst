@@ -346,6 +346,24 @@ for pid in vram:
 				children = [],
 			)
 
+try:
+	with open('/proc/spl/kstat/zfs/arcstats') as f:
+		for line in f:
+			line = line.split()
+			if line[0] == 'size':
+				entries['zfs-arc'] = SimpleNamespace(
+					size = int(line[2]),
+					count = 0,
+					accurate = True,
+					display_pid = 'zfs',
+					parent = 1,
+					name = f'ZFS ARC',
+					children = [],
+				)
+				break
+except FileNotFoundError:
+	pass
+
 unknown = 0
 with open('/proc/meminfo') as f:
 	for line in f:
