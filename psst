@@ -11,7 +11,7 @@ from optparse import OptionParser
 
 parser = OptionParser()
 parser.add_option('-q', '--quiet', action='store_true', dest='quick', default=False, help='use less accurate but faster measurements')
-parser.add_option('--group-by', dest='group_by', default='parent', choices='parent cgroup exe'.split(), help='choose how to group processes: parent (default), cgroup, exe')
+parser.add_option('--group-by', dest='group_by', default='parent', choices='parent cgroup exe comm'.split(), help='choose how to group processes: parent (default), cgroup, exe, comm')
 parser.add_option('--group-slab', action='store_true', dest='group_slab', default=False, help='group all SLABs into single subtree')
 parser.add_option('--group-tmpfs', action='store_true', dest='group_tmpfs', default=False, help='group all tmpfs mounts into single subtree')
 (options, args) = parser.parse_args()
@@ -109,6 +109,12 @@ for p in listdir('/proc'):
 			except:
 				parent = 'exe-kthreads'
 			exes.add(parent)
+		elif options.group_by == 'comm':
+			try:
+				parent = 'exe-' + open(f'/proc/{p}/comm').read().strip()
+			except:
+				parent = 'exe-unknown'
+			exes.add(parent)
 		elif options.group_by == 'cgroup':
 			parent = 'cgroup-' + proc_cgroups.get(p, '/')
 		else:
@@ -174,13 +180,13 @@ for p in listdir('/proc'):
 		children = [],
 	)
 
-if options.group_by == 'exe':
+if options.group_by in ('exe', 'comm'):
 	for exe in exes:
 		entries[exe] = SimpleNamespace(
 			size = 0,
 			count = 0,
 			accurate = True,
-			display_pid = 'exe',
+			display_pid = options.group_by,
 			parent = 1,
 			name = exe[4:],
 			children = [],
