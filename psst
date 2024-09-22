@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-from os import listdir, stat, statvfs, major, minor, readlink
-from os.path import normpath
+from os import listdir, stat, statvfs, major, minor, readlink, walk
+from os.path import normpath, dirname, basename
 from types import SimpleNamespace
 from subprocess import Popen, PIPE
 from io import TextIOWrapper
@@ -11,8 +11,10 @@ from optparse import OptionParser
 
 parser = OptionParser()
 parser.add_option('-q', '--quiet', action='store_true', dest='quick', default=False, help='use less accurate but faster measurements')
+parser.add_option('-c', '--cgroup', action='store_true', dest='by_cgroup', default=False, help='group processes by memory cgroup membership rather than their parent processes')
 (options, args) = parser.parse_args()
 quick = options.quick
+by_cgroup = options.by_cgroup
 
 PAGE_SIZE = getpagesize()
 
@@ -49,6 +51,26 @@ with open('/proc/mounts') as f:
 					children = [],
 				)
 
+proc_cgroups = {}
+if by_cgroup:
+	for d, dirs, files in walk('/sys/fs/cgroup/memory'):
+		cg = d.removeprefix('/sys/fs/cgroup/memory/')
+		if cg == '/sys/fs/cgroup/memory':
+			cg = '/'
+
+		for pid in open(f'{d}/cgroup.procs').read().split():
+			proc_cgroups[int(pid)] = cg
+
+		entries[f'cgroup-{cg}'] = SimpleNamespace(
+			size = 0,
+			accurate = True,
+			display_pid = 'cg',
+			ppid = 1 if cg == '/' else 'cgroup-' + (dirname(cg) or '/'),
+			#name = cg if cg == '/' else basename(cg),
+			name = cg,
+			children = [],
+		)
+
 for p in listdir('/proc'):
 	try: p = int(p)
 	except: continue
@@ -63,7 +85,12 @@ for p in listdir('/proc'):
 			# skip kernel thread
 			continue
 		ppid = None
-		if True:
+		if p == 1:
+			# pid 1 is always our root tree regardless of the mode
+			ppid = 1
+		elif by_cgroup:
+			ppid = 'cgroup-' + proc_cgroups.get(p, '/')
+		else:
 			with open('/proc/%d/status' % p) as f:
 				for line in f:
 					if line.startswith('PPid:\t'):
