@@ -26,7 +26,7 @@ if options.group_tmpfs:
 		size = 0,
 		accurate = True,
 		display_pid = 'tmpfs',
-		ppid = 1,
+		parent = 1,
 		name = 'tmpfs',
 		children = [],
 	)
@@ -57,7 +57,7 @@ with open('/proc/mounts') as f:
 					size = size,
 					accurate = not quick, # otherwise mmaped files are counted twice: once in smaps_rollup, once in statvfs
 					display_pid = type,
-					ppid = 'mounts' if options.group_tmpfs else 1,
+					parent = 'mounts' if options.group_tmpfs else 1,
 					name = mountpoint,
 					children = [],
 				)
@@ -76,7 +76,7 @@ if options.group_by == 'cgroup':
 			size = 0,
 			accurate = True,
 			display_pid = 'cg',
-			ppid = 1 if cg == '/' else 'cgroup-' + (dirname(cg) or '/'),
+			parent = 1 if cg == '/' else 'cgroup-' + (dirname(cg) or '/'),
 			#name = cg if cg == '/' else basename(cg),
 			name = cg,
 			children = [],
@@ -97,23 +97,23 @@ for p in listdir('/proc'):
 		if not name:
 			# skip kernel thread
 			continue
-		ppid = None
+		parent = None
 		if p == 1:
 			# pid 1 is always our root tree regardless of the mode
-			ppid = 1
+			parent = 1
 		elif options.group_by == 'exe':
 			try:
-				ppid = 'exe-' + readlink(f'/proc/{p}/exe')
+				parent = 'exe-' + readlink(f'/proc/{p}/exe')
 			except:
-				ppid = 'exe-kthreads'
-			exes.add(ppid)
+				parent = 'exe-kthreads'
+			exes.add(parent)
 		elif options.group_by == 'cgroup':
-			ppid = 'cgroup-' + proc_cgroups.get(p, '/')
+			parent = 'cgroup-' + proc_cgroups.get(p, '/')
 		else:
 			with open('/proc/%d/status' % p) as f:
 				for line in f:
 					if line.startswith('PPid:\t'):
-						ppid = int(line[6:].rstrip('\n'))
+						parent = int(line[6:].rstrip('\n'))
 						continue
 
 		size = 0
@@ -166,7 +166,7 @@ for p in listdir('/proc'):
 		size = size,
 		accurate = accurate,
 		display_pid = p,
-		ppid = ppid,
+		parent = parent,
 		name = name,
 		children = [],
 	)
@@ -177,7 +177,7 @@ if options.group_by == 'exe':
 			size = 0,
 			accurate = True,
 			display_pid = 'exe',
-			ppid = 1,
+			parent = 1,
 			name = exe[4:],
 			children = [],
 		)
@@ -190,7 +190,7 @@ if options.group_slab:
 		size = 0,
 		accurate = True,
 		display_pid = 'slab',
-		ppid = 1,
+		parent = 1,
 		name = 'SLAB',
 		children = [],
 	)
@@ -229,7 +229,7 @@ for cache in listdir('/sys/kernel/slab'):
 			size = 0,
 			accurate = True,
 			display_pid = 'slab',
-			ppid = 'slabs' if options.group_slab else 1,
+			parent = 'slabs' if options.group_slab else 1,
 			name = cache,
 			children = [],
 		)
@@ -237,7 +237,7 @@ for cache in listdir('/sys/kernel/slab'):
 			size = overhead,
 			accurate = True,
 			display_pid = 'slab',
-			ppid = f'slab-{cache}',
+			parent = f'slab-{cache}',
 			name = '(slab objects)',
 			children = [],
 		)
@@ -245,7 +245,7 @@ for cache in listdir('/sys/kernel/slab'):
 			size = used,
 			accurate = True,
 			display_pid = 'slab',
-			ppid = f'slab-{cache}-meta',
+			parent = f'slab-{cache}-meta',
 			name = '(kernel objects)',
 			children = [],
 		)
@@ -253,7 +253,7 @@ for cache in listdir('/sys/kernel/slab'):
 			size = size - used,
 			accurate = True,
 			display_pid = 'slab',
-			ppid = f'slab-{cache}',
+			parent = f'slab-{cache}',
 			name = '(unused space)',
 			children = [],
 		)
@@ -276,7 +276,7 @@ for b in listdir('/sys/class/block'):
 			size = overhead,
 			accurate = True,
 			display_pid = 'zram',
-			ppid = 1,
+			parent = 1,
 			name = b,
 			children = [],
 		)
@@ -284,7 +284,7 @@ for b in listdir('/sys/class/block'):
 			size = data,
 			accurate = True,
 			display_pid = 'zram',
-			ppid = b,
+			parent = b,
 			name = f'{b} (compressed data)',
 			children = [],
 		)
@@ -312,7 +312,7 @@ for pid in vram:
 			size = 0,
 			accurate = True,
 			display_pid = f'amdgpu',
-			ppid = pid,
+			parent = pid,
 			name = f'(amdgpu {dri})',
 			children = [],
 		)
@@ -321,7 +321,7 @@ for pid in vram:
 				size = size,
 				accurate = True,
 				display_pid = f'amdgpu',
-				ppid = f'{pid}-amdgpu-{dri}',
+				parent = f'{pid}-amdgpu-{dri}',
 				name = f'({type})',
 				children = [],
 			)
@@ -343,7 +343,7 @@ entries['unknown'] = SimpleNamespace(
 	size = unknown,
 	accurate = True,
 	display_pid = '?',
-	ppid = 1,
+	parent = 1,
 	name = '(unknown)',
 	children = [],
 )
@@ -351,7 +351,7 @@ entries['unknown'] = SimpleNamespace(
 # build the tree
 for e in entries.values():
 	if e.display_pid == 1: continue
-	entries[e.ppid].children.append(e)
+	entries[e.parent].children.append(e)
 
 def update_size_total(entry):
 	for child in entry.children:
