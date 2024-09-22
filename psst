@@ -16,7 +16,6 @@ parser.add_option('--group-slab', action='store_true', dest='group_slab', defaul
 parser.add_option('--group-tmpfs', action='store_true', dest='group_tmpfs', default=False, help='group all tmpfs mounts into single subtree')
 (options, args) = parser.parse_args()
 quick = options.quick
-by_cgroup = options.group_by == 'cgroup'
 
 PAGE_SIZE = getpagesize()
 
@@ -64,7 +63,7 @@ with open('/proc/mounts') as f:
 				)
 
 proc_cgroups = {}
-if by_cgroup:
+if options.group_by == 'cgroup':
 	for d, dirs, files in walk('/sys/fs/cgroup/memory'):
 		cg = d.removeprefix('/sys/fs/cgroup/memory/')
 		if cg == '/sys/fs/cgroup/memory':
@@ -100,7 +99,7 @@ for p in listdir('/proc'):
 		if p == 1:
 			# pid 1 is always our root tree regardless of the mode
 			ppid = 1
-		elif by_cgroup:
+		elif options.group_by == 'cgroup':
 			ppid = 'cgroup-' + proc_cgroups.get(p, '/')
 		else:
 			with open('/proc/%d/status' % p) as f:
