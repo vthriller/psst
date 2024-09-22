@@ -11,7 +11,7 @@ from optparse import OptionParser
 
 parser = OptionParser()
 parser.add_option('-q', '--quiet', action='store_true', dest='quick', default=False, help='use less accurate but faster measurements')
-parser.add_option('--group-by', dest='group_by', default='parent', choices='parent cgroup'.split(), help='choose how to group processes: parent (default), cgroup')
+parser.add_option('--group-by', dest='group_by', default='parent', choices='parent cgroup exe'.split(), help='choose how to group processes: parent (default), cgroup, exe')
 parser.add_option('--group-slab', action='store_true', dest='group_slab', default=False, help='group all SLABs into single subtree')
 parser.add_option('--group-tmpfs', action='store_true', dest='group_tmpfs', default=False, help='group all tmpfs mounts into single subtree')
 (options, args) = parser.parse_args()
@@ -82,6 +82,8 @@ if options.group_by == 'cgroup':
 			children = [],
 		)
 
+exes = set()
+
 for p in listdir('/proc'):
 	try: p = int(p)
 	except: continue
@@ -99,6 +101,12 @@ for p in listdir('/proc'):
 		if p == 1:
 			# pid 1 is always our root tree regardless of the mode
 			ppid = 1
+		elif options.group_by == 'exe':
+			try:
+				ppid = 'exe-' + readlink(f'/proc/{p}/exe')
+			except:
+				ppid = 'exe-kthreads'
+			exes.add(ppid)
 		elif options.group_by == 'cgroup':
 			ppid = 'cgroup-' + proc_cgroups.get(p, '/')
 		else:
@@ -162,6 +170,17 @@ for p in listdir('/proc'):
 		name = name,
 		children = [],
 	)
+
+if options.group_by == 'exe':
+	for exe in exes:
+		entries[exe] = SimpleNamespace(
+			size = 0,
+			accurate = True,
+			display_pid = 'exe',
+			ppid = 1,
+			name = exe[4:],
+			children = [],
+		)
 
 # https://utcc.utoronto.ca/~cks/space/blog/linux/SlabinfoSlabMerging
 slab_aliases = defaultdict(list)
