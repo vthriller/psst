@@ -12,6 +12,7 @@ from optparse import OptionParser
 parser = OptionParser()
 parser.add_option('-q', '--quiet', action='store_true', dest='quick', default=False, help='use less accurate but faster measurements')
 parser.add_option('-c', '--cgroup', action='store_true', dest='by_cgroup', default=False, help='group processes by memory cgroup membership rather than their parent processes')
+parser.add_option('--group-slab', action='store_true', dest='group_slab', default=False, help='group all SLABs into single subtree')
 (options, args) = parser.parse_args()
 quick = options.quick
 by_cgroup = options.by_cgroup
@@ -155,6 +156,16 @@ for p in listdir('/proc'):
 # https://utcc.utoronto.ca/~cks/space/blog/linux/SlabinfoSlabMerging
 slab_aliases = defaultdict(list)
 
+if options.group_slab:
+	entries['slabs'] = SimpleNamespace(
+		size = 0,
+		accurate = True,
+		display_pid = 'slab',
+		ppid = 1,
+		name = 'SLAB',
+		children = [],
+	)
+
 for cache in listdir('/sys/kernel/slab'):
 	try:
 		parent = readlink(f'/sys/kernel/slab/{cache}')
@@ -189,7 +200,7 @@ for cache in listdir('/sys/kernel/slab'):
 			size = 0,
 			accurate = True,
 			display_pid = 'slab',
-			ppid = 1,
+			ppid = 'slabs' if options.group_slab else 1,
 			name = cache,
 			children = [],
 		)
