@@ -24,6 +24,7 @@ entries = {}
 if options.group_tmpfs:
 	entries['mounts'] = SimpleNamespace(
 		size = 0,
+		count = 0,
 		accurate = True,
 		display_pid = 'tmpfs',
 		parent = 1,
@@ -55,6 +56,7 @@ with open('/proc/mounts') as f:
 				size = (s.f_blocks - s.f_bfree) * s.f_bsize
 				entries[dev] = SimpleNamespace(
 					size = size,
+					count = 1,
 					accurate = not quick, # otherwise mmaped files are counted twice: once in smaps_rollup, once in statvfs
 					display_pid = type,
 					parent = 'mounts' if options.group_tmpfs else 1,
@@ -74,6 +76,7 @@ if options.group_by == 'cgroup':
 
 		entries[f'cgroup-{cg}'] = SimpleNamespace(
 			size = 0,
+			count = 0,
 			accurate = True,
 			display_pid = 'cg',
 			parent = 1 if cg == '/' else 'cgroup-' + (dirname(cg) or '/'),
@@ -164,6 +167,7 @@ for p in listdir('/proc'):
 		continue
 	entries[p] = SimpleNamespace(
 		size = size,
+		count = 1,
 		accurate = accurate,
 		display_pid = p,
 		parent = parent,
@@ -175,6 +179,7 @@ if options.group_by == 'exe':
 	for exe in exes:
 		entries[exe] = SimpleNamespace(
 			size = 0,
+			count = 0,
 			accurate = True,
 			display_pid = 'exe',
 			parent = 1,
@@ -188,6 +193,7 @@ slab_aliases = defaultdict(list)
 if options.group_slab:
 	entries['slabs'] = SimpleNamespace(
 		size = 0,
+		count = 0,
 		accurate = True,
 		display_pid = 'slab',
 		parent = 1,
@@ -227,6 +233,7 @@ for cache in listdir('/sys/kernel/slab'):
 
 		entries[f'slab-{cache}'] = SimpleNamespace(
 			size = 0,
+			count = 1,
 			accurate = True,
 			display_pid = 'slab',
 			parent = 'slabs' if options.group_slab else 1,
@@ -235,6 +242,7 @@ for cache in listdir('/sys/kernel/slab'):
 		)
 		entries[f'slab-{cache}-meta'] = SimpleNamespace(
 			size = overhead,
+			count = 0,
 			accurate = True,
 			display_pid = 'slab',
 			parent = f'slab-{cache}',
@@ -243,6 +251,7 @@ for cache in listdir('/sys/kernel/slab'):
 		)
 		entries[f'slab-{cache}-objects'] = SimpleNamespace(
 			size = used,
+			count = 0,
 			accurate = True,
 			display_pid = 'slab',
 			parent = f'slab-{cache}-meta',
@@ -251,6 +260,7 @@ for cache in listdir('/sys/kernel/slab'):
 		)
 		entries[f'slab-{cache}-free'] = SimpleNamespace(
 			size = size - used,
+			count = 0,
 			accurate = True,
 			display_pid = 'slab',
 			parent = f'slab-{cache}',
@@ -274,6 +284,7 @@ for b in listdir('/sys/class/block'):
 
 		entries[b] = SimpleNamespace(
 			size = overhead,
+			count = 0,
 			accurate = True,
 			display_pid = 'zram',
 			parent = 1,
@@ -282,6 +293,7 @@ for b in listdir('/sys/class/block'):
 		)
 		entries[b + '-data'] = SimpleNamespace(
 			size = data,
+			count = 0,
 			accurate = True,
 			display_pid = 'zram',
 			parent = b,
@@ -310,6 +322,7 @@ for pid in vram:
 	for dri in vram[pid]:
 		entries[f'{pid}-amdgpu-{dri}'] = SimpleNamespace(
 			size = 0,
+			count = 0,
 			accurate = True,
 			display_pid = f'amdgpu',
 			parent = pid,
@@ -319,6 +332,7 @@ for pid in vram:
 		for type, size in vram[pid][dri].items():
 			entries[f'{pid}-amdgpu-{dri}-{type}'] = SimpleNamespace(
 				size = size,
+				count = 0,
 				accurate = True,
 				display_pid = f'amdgpu',
 				parent = f'{pid}-amdgpu-{dri}',
@@ -341,6 +355,7 @@ for e in entries.values():
 
 entries['unknown'] = SimpleNamespace(
 	size = unknown,
+	count = 0,
 	accurate = True,
 	display_pid = '?',
 	parent = 1,
@@ -357,6 +372,7 @@ def update_size_total(entry):
 	for child in entry.children:
 		update_size_total(child)
 	entry.size_total = entry.size + sum(child.size_total for child in entry.children)
+	entry.count_total = entry.count + sum(child.count_total for child in entry.children)
 	entry.accurate_total = entry.accurate and all([child.accurate_total for child in entry.children])
 
 update_size_total(entries[1])
@@ -366,6 +382,10 @@ for e in entries.values():
 	e.children.sort(key = lambda e: e.size_total, reverse = True)
 
 pid_len = max(len(str(e.display_pid)) for e in entries.values())
+count_len = max(len(str(e.count_total)) for e in entries.values())
+
+pid_len = max(pid_len, len('PID'))
+count_len = max(count_len, len('count'))
 
 def pretty_num(n):
 	for prefix in ' kMGTPE':
@@ -383,13 +403,14 @@ else:
 	clear = ''
 
 def show_subtree(entry, prefix_first='', prefix_rest=''):
-	print('%s%s%s %s%s%s %s ' % (
+	print('%s%s%s %s%s%s %s %s ' % (
 		yellow if not entry.accurate else '',
 		pretty_num(entry.size),
 		clear,
 		yellow if not entry.accurate_total else '',
 		pretty_num(entry.size_total),
 		clear,
+		'% *s' % (count_len, entry.count_total),
 		'% *s' % (pid_len, entry.display_pid),
 	), end='')
 	print(prefix_first + entry.name)
@@ -402,9 +423,11 @@ pager = Popen(('less', '-RS'), stdin=PIPE)
 sys.stdout = TextIOWrapper(pager.stdin)
 
 print(bold, end='')
-print('% 8s % 8s % *s %s' % (
+print('% 8s % 8s % *s % *s %s' % (
 	'PSS',
 	'∑ PSS',
+	count_len,
+	'count',
 	pid_len,
 	'PID',
 	'command or mount point'
