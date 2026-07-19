@@ -87,8 +87,10 @@ if options.group_by == 'cgroup':
 exes = set()
 
 for p in listdir('/proc'):
-	try: p = int(p)
-	except: continue
+	try:
+		p = int(p)
+	except ValueError:
+		continue
 
 	try:
 		print(f'reading {p}...', end='\r', file=sys.stderr)
@@ -106,13 +108,13 @@ for p in listdir('/proc'):
 		elif options.group_by == 'exe':
 			try:
 				parent = 'exe-' + readlink(f'/proc/{p}/exe')
-			except:
+			except OSError:
 				parent = 'exe-kthreads'
 			exes.add(parent)
 		elif options.group_by == 'comm':
 			try:
 				parent = 'exe-' + open(f'/proc/{p}/comm').read().strip()
-			except:
+			except OSError:
 				parent = 'exe-unknown'
 			exes.add(parent)
 		elif options.group_by == 'cgroup':
@@ -168,17 +170,17 @@ for p in listdir('/proc'):
 								accurate = False
 		except PermissionError:
 			accurate = False
-	except FileNotFoundError:
-		continue
-	entries[p] = SimpleNamespace(
-		size = size,
-		count = 1,
-		accurate = accurate,
-		display_pid = p,
-		parent = parent,
-		name = name,
-		children = [],
-	)
+		except FileNotFoundError:
+			continue
+		entries[p] = SimpleNamespace(
+			size = size,
+			count = 1,
+			accurate = accurate,
+			display_pid = p,
+			parent = parent,
+			name = name,
+			children = [],
+		)
 
 if options.group_by in ('exe', 'comm'):
 	for exe in exes:
